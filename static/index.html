@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notes</title>
+<script>try{document.documentElement.dataset.theme=JSON.parse(localStorage.nt_theme)||"light"}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--green:#00a82d;--green-d:#008a25;--side:#2b2b2b;--side-h:#3a3a3a;--side-t:#c8c8c8;--line:#e6e6e6;--bg:#fff;--mid:#f8f8f8;--t:#333;--t2:#8a8a8a;--t3:#6b6b6b;--sel:#e9f7ed;--hov:#fafafa;--inp:#f3f3f3;--ph:#c4c4c4}
+[data-theme=dark]{color-scheme:dark;--side:#0d0d0d;--side-h:#1c1c1c;--line:#222;--bg:#000;--mid:#0a0a0a;--t:#e6e6e6;--t2:#8a8a8a;--t3:#9a9a9a;--sel:#0f2a17;--hov:#111;--inp:#161616;--ph:#555}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);font-family:"Source Sans 3","Source Sans Pro",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--t);font-size:14px;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit;background:transparent}
+.app{display:grid;grid-template-columns:250px 320px 1fr;height:100%}
+/* sidebar */
+.side{background:var(--side);color:var(--side-t);display:flex;flex-direction:column;min-height:0}
+.brand{padding:18px 18px 6px;font-size:18px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
+.logo{width:26px;height:26px;border-radius:6px;background:var(--green);display:grid;place-items:center;color:#fff;font-size:15px}
+.newbtn{margin:14px 16px 10px;background:var(--green);color:#fff;border:0;border-radius:20px;padding:9px 16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.newbtn:hover{background:var(--green-d)}
+.sec{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 6px;font-size:12px;font-weight:600;letter-spacing:.3px;color:#8d8d8d}
+.nlist{overflow-y:auto;flex:1;padding-bottom:12px}
+.nitem{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 18px;cursor:pointer;border-left:3px solid transparent}
+.nitem:hover{background:var(--side-h)}
+.nitem.on{background:var(--side-h);border-left-color:var(--green);color:#fff}
+.nitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nitem .ct{font-size:12px;color:#8d8d8d}
+.nitem .acts{display:none;gap:2px}
+.nitem:hover .acts{display:flex}.nitem:hover .ct{display:none}
+.ib{background:none;border:0;cursor:pointer;padding:2px 5px;border-radius:4px;color:inherit;opacity:.8}
+.ib:hover{opacity:1;background:rgba(255,255,255,.12)}
+.ninput{margin:2px 14px 6px;width:calc(100% - 28px);background:#1f1f1f;border:1px solid var(--green);border-radius:4px;color:#fff;padding:6px 8px;outline:0}
+/* middle */
+.mid{background:var(--mid);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.mh{padding:16px 18px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.mh h2{margin:0;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh .sub{color:var(--t2);font-size:12px;margin:2px 0 10px}
+.row{display:flex;gap:8px}
+.search{flex:1;border:1px solid var(--line);border-radius:18px;padding:6px 12px;background:var(--inp);outline:0}
+.search:focus{border-color:var(--green);background:var(--bg)}
+.add{background:var(--green);color:#fff;border:0;border-radius:18px;padding:6px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.add:hover{background:var(--green-d)}
+.slist{overflow-y:auto;flex:1;background:var(--bg)}
+.card{padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer;border-left:3px solid transparent;position:relative}
+.card:hover{background:var(--hov)}
+.card.on{background:var(--sel);border-left-color:var(--green)}
+.card .tt{font-weight:600;font-size:15px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .sn{color:var(--t3);font-size:13px;line-height:1.35;max-height:36px;overflow:hidden}
+.card .dt{color:var(--t2);font-size:12px;margin-top:6px}
+.empty{padding:50px 24px;text-align:center;color:var(--t2);line-height:1.5}
+/* editor */
+.ed{display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+.tb{height:48px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;color:var(--t2);font-size:12px}
+.del{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:#e0503f;margin-left:6px}
+.tbtn{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--t2);margin-left:6px}
+.tbtn:hover{background:var(--hov);color:var(--t)}
+.del:hover{background:rgba(224,80,63,.12);border-color:rgba(224,80,63,.5)}
+.body{flex:1;overflow-y:auto;padding:28px 48px;display:flex;flex-direction:column}
+.title{border:0;outline:0;font-size:30px;font-weight:700;width:100%;padding:0 0 12px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.title::placeholder{color:var(--ph)}
+.desc{flex:1;border:0;outline:0;resize:none;font-size:16px;line-height:1.65;width:100%;min-height:300px}
+.desc::placeholder{color:var(--ph)}
+.panels{display:contents}
+.tbl{display:flex;align-items:center;gap:8px}.tbl .tbtn{margin-left:0}
+#menu,.scrim,#toNotes,.brand .themebtn{display:none}
+.brand .themebtn{margin-left:auto;font-size:16px}
+#toNotes{margin:0 0 8px}
+@media(min-width:641px){
+.app.focus{grid-template-columns:1fr}
+.app.focus .side,.app.focus .mid{display:none}
+.app.focus .body{max-width:900px;width:100%;margin:0 auto}
+}
+.hide{display:none!important}
+@media(max-width:900px){.app{grid-template-columns:200px 260px 1fr}.body{padding:20px}}
+@media(max-width:640px){
+.app{display:block;height:100dvh}
+.panels{display:flex;position:fixed;top:0;left:0;bottom:0;width:min(88vw,360px);z-index:50;transform:translateX(-103%);transition:transform .22s ease;box-shadow:4px 0 24px rgba(0,0,0,.35)}
+.app.drawer .panels{transform:none}
+.side,.mid{width:100%;flex:none;height:100%}
+.mid{display:none}.app.lvl2 .mid{display:flex}.app.lvl2 .side{display:none}
+.scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;opacity:0;pointer-events:none;transition:opacity .22s}
+.app.drawer .scrim{opacity:1;pointer-events:auto}
+.ed{height:100dvh}
+#menu,#toNotes,.brand .themebtn{display:inline-block}#focus{display:none}
+.tb{padding:0 12px}
+.body{padding:16px 18px}.title{font-size:24px}
+.search,.ninput{font-size:16px}
+.nitem{padding:11px 10px 11px 18px}
+.nitem .acts{display:flex}.nitem .ct,.nitem:hover .ct{display:inline}
+.ib{padding:6px 9px}
+}
+@media(prefers-reduced-motion:reduce){.panels,.scrim{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="panels">
+  <aside class="side">
+    <div class="brand"><span class="logo">✎</span>Notes<button class="ib themebtn" title="Dark / light mode">🌙</button></div>
+    <button class="newbtn" id="newNote">＋ New Note</button>
+    <div class="sec">NOTES</div>
+    <div class="nlist" id="nlist"></div>
+  </aside>
+  <section class="mid">
+    <div class="mh">
+      <button class="tbtn" id="toNotes">‹ Notes</button>
+      <h2 id="mtitle">Select a note</h2>
+      <div class="sub" id="msub"></div>
+      <div class="row"><input class="search" id="q" placeholder="Search subnotes"><button class="add" id="newSub">＋ New</button></div>
+    </div>
+    <div class="slist" id="slist"><div class="empty">Pick a note on the left to see its subnotes.</div></div>
+  </section>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <main class="ed">
+    <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">⇤ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
+    <div class="body hide" id="edbody">
+      <input class="title" id="title" placeholder="Title" maxlength="255">
+      <textarea class="desc" id="desc" placeholder="Start writing…"></textarea>
+    </div>
+    <div class="empty" id="edempty" style="margin-top:80px">Select a subnote to read or edit it.</div>
+  </main>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error(r.status);return r.json()};
+const fmt=(d,t)=>{if(!d)return'';const x=new Date(d+'T00:00');return x.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+(t?' · '+t:'')};
+
+let notes=[], subs={}, descs={}, curNote=null, curSub=null, pending=null, timer=null, filter='';
+
+/* ---------- remembered UI state (survives refresh) ---------- */
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem('nt_'+k));return v??d}catch{return d}},set(k,v){try{localStorage.setItem('nt_'+k,JSON.stringify(v))}catch{}}};
+function setTheme(t){document.documentElement.dataset.theme=t;document.querySelectorAll('.themebtn').forEach(b=>b.textContent=t==='dark'?'☀️':'🌙');LS.set('theme',t)}
+function setFocus(on){$('#app').classList.toggle('focus',on);$('#focus').textContent=on?'⇥ Show panels':'⇤ Hide panels';LS.set('focus',on)}
+document.querySelectorAll('.themebtn').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+$('#focus').onclick=()=>setFocus(!$('#app').classList.contains('focus'));
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preventDefault();$('#focus').click()}});
+/* phone: notes + subnotes live in a left drawer */
+const mob=()=>matchMedia('(max-width:640px)').matches;
+const openDrawer=()=>{$('#app').classList.add('drawer');$('#app').classList.toggle('lvl2',!!curNote)};
+const closeDrawer=()=>$('#app').classList.remove('drawer');
+$('#menu').onclick=openDrawer; $('#scrim').onclick=closeDrawer; $('#toNotes').onclick=()=>$('#app').classList.remove('lvl2');
+setTheme(document.documentElement.dataset.theme||'light'); setFocus(LS.get('focus',false));
+
+/* ---------- notes ---------- */
+async function loadNotes(){notes=await api('GET','/notes');renderNotes()}
+function renderNotes(){
+  $('#nlist').innerHTML=notes.map(n=>`<div class="nitem ${n.id===curNote?'on':''}" data-id="${n.id}">
+    <span>📓</span><span class="nm">${esc(n.topic)}</span><span class="ct">${n.cnt}</span>
+    <span class="acts"><button class="ib" data-a="ren" title="Rename">✎</button><button class="ib" data-a="del" title="Delete">🗑</button></span></div>`).join('')
+    || '<div class="empty" style="color:#888">No notes yet.<br>Click “New Note”.</div>';
+}
+$('#nlist').onclick=async e=>{
+  const it=e.target.closest('.nitem'); if(!it)return; const id=+it.dataset.id, n=notes.find(x=>x.id===id), a=e.target.dataset.a;
+  if(a==='ren'){const t=prompt('Rename note',n.topic);if(t&&t.trim()){n.topic=t.trim();renderNotes();if(id===curNote)$('#mtitle').textContent=n.topic;api('PATCH','/notes/'+id,{topic:n.topic})}return}
+  if(a==='del'){if(!confirm(`Delete “${n.topic}” and all its subnotes?`))return;notes=notes.filter(x=>x.id!==id);delete subs[id];if(curNote===id){curNote=null;curSub=null;LS.set('note',null);LS.set('sub',null);showEditor(false);$('#app').classList.remove('lvl2');$('#mtitle').textContent='Select a note';$('#msub').textContent='';$('#slist').innerHTML='<div class="empty">Pick a note on the left to see its subnotes.</div>'}renderNotes();api('DELETE','/notes/'+id);return}
+  selectNote(id);
+};
+$('#newNote').onclick=()=>{
+  if($('.ninput'))return;
+  const i=document.createElement('input');i.className='ninput';i.placeholder='Note name, then Enter';
+  $('#nlist').prepend(i);i.focus();
+  let done=false;const fin=async ok=>{if(done)return;done=true;const t=i.value.trim();i.remove();if(ok&&t){const n=await api('POST','/notes',{topic:t});notes.unshift(n);subs[n.id]=[];renderNotes();selectNote(n.id)}};
+  i.onkeydown=e=>{if(e.key==='Enter')fin(true);if(e.key==='Escape')fin(false)};i.onblur=()=>fin(true);
+};
+
+/* ---------- subnotes ---------- */
+async function selectNote(id,quiet){
+  await flush(); curNote=id; curSub=null; LS.set('note',id); LS.set('sub',null); showEditor(false); filter=''; $('#q').value=''; $('#app').classList.add('lvl2'); if(!quiet)$('#app').classList.add('drawer');
+  const n=notes.find(x=>x.id===id); $('#mtitle').textContent=n.topic; renderNotes();
+  if(subs[id]) renderSubs(); else $('#slist').innerHTML='<div class="empty">Loading…</div>';
+  const fresh=await api('GET',`/notes/${id}/subnotes`);   // always refresh in background
+  subs[id]=fresh; if(curNote===id)renderSubs();
+}
+function renderSubs(){
+  const list=(subs[curNote]||[]), f=filter.toLowerCase();
+  const rows=f?list.filter(s=>(s.topic+' '+s.snippet).toLowerCase().includes(f)):list;
+  $('#msub').textContent=list.length+(list.length===1?' subnote':' subnotes');
+  $('#slist').innerHTML=rows.map(s=>`<div class="card ${s.id===curSub?'on':''}" data-id="${s.id}">
+    <div class="tt">${esc(s.topic)||'Untitled'}</div><div class="sn">${esc(s.snippet)}</div><div class="dt">${fmt(s.date,s.time)}</div></div>`).join('')
+    ||`<div class="empty">${f?'No matches.':'No subnotes yet.<br>Click “＋ New” to add one.'}</div>`;
+  const n=notes.find(x=>x.id===curNote); if(n&&n.cnt!==list.length){n.cnt=list.length;renderNotes()}
+}
+$('#q').oninput=e=>{filter=e.target.value;if(curNote)renderSubs()};
+$('#slist').onclick=e=>{const c=e.target.closest('.card');if(c)openSub(+c.dataset.id)};
+$('#newSub').onclick=async()=>{
+  if(!curNote)return alert('Select or create a note first.');
+  await flush();
+  const s=await api('POST',`/notes/${curNote}/subnotes`,{topic:'Untitled'});
+  subs[curNote].unshift(s);descs[s.id]='';renderSubs();await openSub(s.id);$('#title').select();
+};
+async function openSub(id){
+  await flush(); curSub=id; LS.set('sub',id); renderSubs(); showEditor(true); closeDrawer();
+  const s=subs[curNote].find(x=>x.id===id);
+  $('#title').value=s.topic; $('#desc').value=descs[id]??''; $('#status').textContent=fmt(s.date,s.time);
+  if(descs[id]===undefined){
+    $('#desc').disabled=true; const r=await api('GET','/subnotes/'+id); descs[id]=r.description;
+    $('#desc').disabled=false; if(curSub===id){$('#desc').value=r.description;if(!mob())$('#desc').focus()}
+  } else if(!mob())$('#desc').focus();
+}
+function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
+$('#delSub').onclick=()=>{
+  if(!curSub||!confirm('Delete this subnote?'))return;
+  clearTimeout(timer);pending=null;const id=curSub;
+  subs[curNote]=subs[curNote].filter(x=>x.id!==id);curSub=null;LS.set('sub',null);showEditor(false);renderSubs();if(mob())openDrawer();api('DELETE','/subnotes/'+id);
+};
+
+/* ---------- autosave (debounced) ---------- */
+function edit(){
+  if(!curSub)return; const s=subs[curNote].find(x=>x.id===curSub), t=$('#title').value, d=$('#desc').value;
+  s.topic=t; s.snippet=d.slice(0,140); descs[curSub]=d; pending={id:curSub,topic:t||'Untitled',description:d};
+  const c=document.querySelector(`.card[data-id="${curSub}"]`); if(c){c.querySelector('.tt').textContent=t||'Untitled';c.querySelector('.sn').textContent=s.snippet}
+  $('#status').textContent='Saving…'; clearTimeout(timer); timer=setTimeout(flush,600);
+}
+async function flush(){
+  clearTimeout(timer); if(!pending)return; const p=pending; pending=null;
+  try{await api('PATCH','/subnotes/'+p.id,{topic:p.topic,description:p.description});if(curSub===p.id)$('#status').textContent='Saved'}
+  catch{pending=pending||p;$('#status').textContent='Save failed — retrying';timer=setTimeout(flush,3000)}
+}
+$('#title').oninput=edit; $('#desc').oninput=edit;
+addEventListener('beforeunload',()=>{if(pending)navigator.sendBeacon&&fetch('/api/subnotes/'+pending.id,{method:'PATCH',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(pending)})});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
+if(mob()&&!LS.get('sub'))openDrawer();
+(async()=>{
+  await loadNotes();
+  const n=LS.get('note'), sid=LS.get('sub');   // jump back to where you were writing
+  if(n&&notes.some(x=>x.id===n)){
+    await selectNote(n,true);
+    if(sid&&(subs[n]||[]).some(x=>x.id===sid))await openSub(sid);
+  }
+  if(mob()&&!curSub)openDrawer();
+})();
+</script>
+</body>
+</html>

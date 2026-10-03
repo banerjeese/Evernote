@@ -1,5 +1,5 @@
 import os, re, html
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from mysql.connector import pooling
 
 DB = dict(
@@ -16,10 +16,13 @@ pool = pooling.MySQLConnectionPool(
     pool_name="notes", pool_size=8, pool_reset_session=False, autocommit=True, **DB
 )
 app = Flask(__name__, static_folder="static", static_url_path="")
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # max upload (images)
 
 
 def snip(raw):
-    t = re.sub(r"<[^>]*$", "", (raw or "").replace("<!--rt-->", ""))
+    t = (raw or "").replace("<!--rt-->", "")
+    t = re.sub(r'<div class="i"[^>]*></div>', " 🖼 ", t)
+    t = re.sub(r"<[^>]*$", "", t)
     t = html.unescape(re.sub(r"<[^>]+>", " ", t))
     return re.sub(r"\s+", " ", t).strip()[:140]
 
@@ -44,6 +47,23 @@ def run(sql, args=(), fetch="all"):
 
 D = "DATE_FORMAT({0},'%%Y-%%m-%%d')"
 T = "TIME_FORMAT({0},'%%H:%%i')"
+
+
+IMG_SQL = """CREATE TABLE IF NOT EXISTS note_images (
+  image_id   INT AUTO_INCREMENT PRIMARY KEY,
+  subnote_id INT NOT NULL,
+  mime       VARCHAR(40) NOT NULL,
+  data       MEDIUMBLOB NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_subnote (subnote_id)
+) ENGINE=InnoDB"""
+try:
+    run(IMG_SQL, (), "write")
+    IMG_OK = True
+except Exception as e:  # e.g. dbuser has no CREATE permission
+    IMG_OK = False
+    print("!! Could not create table note_images:", e)
+    print("!! Run this once in MySQL, then restart:\n" + IMG_SQL)
 
 
 @app.get("/")
@@ -82,6 +102,10 @@ def rename_note(nid):
 
 @app.delete("/api/notes/<int:nid>")
 def del_note(nid):
+    if IMG_OK:
+        run("DELETE i FROM note_images i JOIN subnotes s ON s.subnote_id=i.subnote_id "
+            "JOIN notes n ON n.note_id=s.note_id WHERE s.note_id=%s AND n.userId=%s",
+            (nid, USER_ID), "write")
     run("DELETE s FROM subnotes s JOIN notes n ON n.note_id=s.note_id "
         "WHERE s.note_id=%s AND n.userId=%s", (nid, USER_ID), "write")
     run("DELETE FROM notes WHERE note_id=%s AND userId=%s", (nid, USER_ID), "write")
@@ -142,8 +166,51 @@ def edit_sub(sid):
 
 @app.delete("/api/subnotes/<int:sid>")
 def del_sub(sid):
+    if IMG_OK:
+        run("DELETE i FROM note_images i JOIN subnotes s ON s.subnote_id=i.subnote_id "
+            "JOIN notes n ON n.note_id=s.note_id WHERE i.subnote_id=%s AND n.userId=%s",
+            (sid, USER_ID), "write")
     run("DELETE s FROM subnotes s JOIN notes n ON n.note_id=s.note_id "
         "WHERE s.subnote_id=%s AND n.userId=%s", (sid, USER_ID), "write")
+    return jsonify(ok=True)
+
+
+# ---------- images (stored in MySQL, served with long cache) ----------
+ALLOWED = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+@app.post("/api/subnotes/<int:sid>/images")
+def add_image(sid):
+    if not IMG_OK:
+        return jsonify(error="note_images table is missing"), 503
+    mime, data = (request.mimetype or "").lower(), request.get_data()
+    if mime not in ALLOWED or not data:
+        return jsonify(error="unsupported image"), 400
+    iid, n = run("INSERT INTO note_images (subnote_id, mime, data) "
+                 "SELECT s.subnote_id,%s,%s FROM subnotes s JOIN notes n ON n.note_id=s.note_id "
+                 "WHERE s.subnote_id=%s AND n.userId=%s", (mime, data, sid, USER_ID), "write")
+    return (jsonify(id=iid), 201) if n else (jsonify(error="not found"), 404)
+
+
+@app.get("/api/images/<int:iid>")
+def get_image(iid):
+    row = IMG_OK and run(
+        "SELECT i.mime, i.data FROM note_images i JOIN subnotes s ON s.subnote_id=i.subnote_id "
+        "JOIN notes n ON n.note_id=s.note_id WHERE i.image_id=%s AND n.userId=%s",
+        (iid, USER_ID), "one")
+    if not row:
+        return "", 404
+    r = Response(bytes(row["data"]), mimetype=row["mime"])
+    r.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+    return r
+
+
+@app.delete("/api/images/<int:iid>")
+def del_image(iid):
+    if IMG_OK:
+        run("DELETE i FROM note_images i JOIN subnotes s ON s.subnote_id=i.subnote_id "
+            "JOIN notes n ON n.note_id=s.note_id WHERE i.image_id=%s AND n.userId=%s",
+            (iid, USER_ID), "write")
     return jsonify(ok=True)
 
 

@@ -68,6 +68,21 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .desc .b::before{content:"•";position:absolute;left:.6em}
 .desc .h{font-size:1.3em;font-weight:700;line-height:1.4;margin:.55em 0 .1em}
 .desc.empty>div:first-child::before{content:"Start writing…";color:var(--ph);pointer-events:none}
+.desc .i{position:relative;margin:.5em 0;user-select:none;-webkit-user-select:none}
+.desc .i .w{position:relative;display:block;width:fit-content;max-width:100%}
+.desc .i .w[style] img{width:100%}
+.desc .i img{display:block;max-width:100%;height:auto;border-radius:6px;border:1px solid var(--line);cursor:zoom-in}
+.desc .i.sel img{outline:3px solid var(--green)}
+.desc .i .x{position:absolute;top:6px;right:6px;display:none;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:18px;line-height:28px;cursor:pointer}
+.desc .i:hover .x,.desc .i.sel .x{display:block}
+.desc .i .rz{position:absolute;right:5px;bottom:5px;width:18px;height:18px;border:2px solid #fff;border-radius:4px;background:var(--green);opacity:.8;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.desc .i .rz:hover{opacity:1}
+.lb{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);display:flex;overflow:auto}
+.lb img{margin:auto;max-width:100vw;max-height:100vh;object-fit:contain;cursor:zoom-in}
+.lb img.full{max-width:none;max-height:none;cursor:zoom-out}
+.lbbar{position:fixed;top:max(10px,env(safe-area-inset-top));right:12px;display:flex;gap:8px;z-index:101}
+.lbb{width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer;text-decoration:none}
+.lbb:hover{background:rgba(255,255,255,.35)}
 .panels{display:contents}
 .tbl{display:flex;align-items:center;gap:8px}.tbl .tbtn{margin-left:0}
 #menu,.scrim,#toNotes,.brand .themebtn{display:none}
@@ -96,6 +111,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .nitem{padding:11px 10px 11px 18px}
 .nitem .acts{display:flex}.nitem .ct,.nitem:hover .ct{display:inline}
 .ib{padding:6px 9px}
+.desc .i .rz{width:26px;height:26px}
 }
 @media(prefers-reduced-motion:reduce){.panels,.scrim{transition:none}}
 </style>
@@ -121,7 +137,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
   </div>
   <div class="scrim" id="scrim"></div>
   <main class="ed">
-    <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">⇤ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
+    <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn hide" id="imgBtn" title="Insert image (or just paste / drop one)">🖼</button><input type="file" id="file" accept="image/*" multiple hidden><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">⇤ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
     <div class="body hide" id="edbody">
       <input class="title" id="title" placeholder="Title" maxlength="255">
       <div class="desc empty" id="desc" contenteditable="true" spellcheck="true"><div><br></div></div>
@@ -129,6 +145,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
     <div class="empty" id="edempty" style="margin-top:80px">Select a subnote to read or edit it.</div>
   </main>
 </div>
+<div class="lb hide" id="lb"><div class="lbbar"><a class="lbb" id="lbDl" title="Save image">⬇</a><button class="lbb" id="lbDel" title="Delete image">🗑</button><button class="lbb" id="lbX" title="Close">✕</button></div><img id="lbImg" alt=""></div>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -144,12 +161,12 @@ function toHTML(raw){            // db value -> editor html (old plain-text note
   if(!raw)return'<div><br></div>';
   if(raw.startsWith('<!--rt-->')){
     const d=new DOMParser().parseFromString(raw,'text/html');
-    return [...d.body.children].map(x=>blk(x.className,x.textContent)).join('')||'<div><br></div>';
+    return [...d.body.children].map(x=>x.classList.contains('i')&&/^\d+$/.test(x.dataset.id||'')?imgHTML(x.dataset.id,+x.dataset.w>=10&&+x.dataset.w<=100?+x.dataset.w:0):blk(x.className,x.textContent)).join('')||'<div><br></div>';
   }
   return raw.split('\n').map(l=>blk('',l)).join('');
 }
-const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>blk(d.className,d.textContent.replace(/\u00a0/g,' '))).join('').replace(/<br>/g,'');
-const plain=()=>[...ed.children].map(d=>d.textContent).join(' ').replace(/\s+/g,' ').trim();
+const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>isImg(d)?`<div class="i" data-id="${d.dataset.id}"${d.dataset.w?` data-w="${d.dataset.w}"`:''}></div>`:blk(d.className,d.textContent.replace(/\u00a0/g,' '))).join('').replace(/<br>/g,'');
+const plain=()=>[...ed.children].map(d=>isImg(d)?'🖼':d.textContent).join(' ').replace(/\s+/g,' ').trim();
 const refreshEmpty=()=>ed.classList.toggle('empty',ed.children.length===1&&!ed.firstChild.className&&!ed.textContent);
 function setDesc(raw){ed.innerHTML=toHTML(raw);refreshEmpty()}
 function place(n,o){const r=document.createRange();r.setStart(n,o);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r)}
@@ -165,12 +182,14 @@ function fixup(){                // keep editor children as <div> lines only
     const d=document.createElement('div');n.replaceWith(d);d.appendChild(n);
   });
   if(!ed.firstChild){ed.innerHTML='<div><br></div>';moved=true}
+  if(isImg(ed.lastElementChild)){const d=document.createElement('div');d.innerHTML='<br>';ed.append(d)}
   if(moved&&foc){an&&an!==ed&&ed.contains(an)?place(an,ao):place(ed.firstChild,0)}
 }
 function enter(){
   fixup(); const sel=getSelection(); if(!sel.rangeCount)return; let r=sel.getRangeAt(0);
   if(!r.collapsed){r.deleteContents();r=sel.getRangeAt(0)}
   const b=blockOf(r.startContainer); if(!b)return;
+  if(isImg(b)){const nb=document.createElement('div');nb.innerHTML='<br>';b.after(nb);place(nb,0);return}
   const cls=b.className, tr=document.createRange(); tr.selectNodeContents(b); tr.setStart(r.startContainer,r.startOffset);
   const tail=tr.extractContents(), head=b.textContent, tailTxt=tail.textContent;
   const mk=MARK.find(m=>head.startsWith(m)||head===m.trim());
@@ -185,7 +204,7 @@ function enter(){
 }
 const TRIG=/^(-|>>|>|redimp)[ \u00a0]$/i;
 function shortcuts(){            // runs after typing; converts "- ", ">> ", "> ", "redimp " at the caret
-  const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return; const r=sel.getRangeAt(0),b=blockOf(r.startContainer); if(!b)return;
+  const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return; const r=sel.getRangeAt(0),b=blockOf(r.startContainer); if(!b||isImg(b))return;
   const m=headText(b,r).match(TRIG); if(!m)return; const k=m[1].toLowerCase();
   if((k==='-'||k==='>>')&&b.className)return;
   const x=document.createRange();x.setStart(b,0);x.setEnd(r.startContainer,r.startOffset);x.deleteContents();
@@ -196,20 +215,115 @@ function shortcuts(){            // runs after typing; converts "- ", ">> ", "> 
 ed.addEventListener('beforeinput',e=>{
   const t=e.inputType;
   if(t==='insertParagraph'||t==='insertLineBreak'){e.preventDefault();enter();edit();return}
-  if(t==='deleteContentBackward'){                      // Backspace at line start: bullet/heading -> normal line
+  if(t==='deleteContentBackward'||t==='deleteContentForward'){
+    const si=ed.querySelector('.i.sel'); if(si){e.preventDefault();removeImg(si);return}              // selected image -> delete it
     const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return;
-    const b=blockOf(sel.anchorNode); if(b&&b.className&&!headText(b,sel.getRangeAt(0))){e.preventDefault();b.className='';edit()}
+    const r=sel.getRangeAt(0), b=blockOf(sel.anchorNode); if(!b||isImg(b))return;
+    if(t==='deleteContentBackward'){
+      if(!headText(b,r)){
+        const pv=b.previousElementSibling;
+        if(pv&&isImg(pv)){e.preventDefault();markSel(pv);return}                                   // 1st Backspace selects the image above
+        if(b.className){e.preventDefault();b.className='';edit()}                                  // bullet/heading -> normal line
+      }
+    }else{
+      const x=document.createRange();x.selectNodeContents(b);x.setStart(r.startContainer,r.startOffset);
+      const nx=b.nextElementSibling; if(!x.toString()&&isImg(nx)){e.preventDefault();markSel(nx)}   // Delete at line end selects image below
+    }
   }
 });
 ed.addEventListener('input',e=>{if(!e.isComposing){fixup();shortcuts()}edit()});
 ed.addEventListener('compositionend',()=>setTimeout(()=>{shortcuts();edit()},0));
-ed.addEventListener('paste',e=>{                       // paste as plain text; "- item" lines become bullets
+ed.addEventListener('paste',e=>{                       // image -> inserted; else plain text ("- item" lines become bullets)
+  const imgs=[...e.clipboardData.files].filter(f=>f.type.startsWith('image/'));
+  if(imgs.length&&!e.clipboardData.getData('text/plain')){e.preventDefault();addImages(imgs);return}
   e.preventDefault(); const t=(e.clipboardData.getData('text/plain')||'').replace(/\r/g,'');
   t.split('\n').forEach((ln,i)=>{
     if(i)enter(); const m=ln.match(/^\s*[-*•]\s+(.*)$/);
     if(m){const b=blockOf(getSelection().anchorNode);if(b&&!b.className&&!b.textContent)b.className='b';ln=m[1]}
     if(ln)document.execCommand('insertText',false,ln);
   }); edit();
+});
+
+/* ---------- inline images (stored in MySQL table note_images, placed only between text lines) ---------- */
+const isImg=n=>!!n&&!!n.classList&&n.classList.contains('i');
+const imgHTML=(id,w)=>`<div class="i" data-id="${id}"${w?` data-w="${w}"`:''} contenteditable="false"><span class="w"${w?` style="width:${w}%"`:''}><img src="/api/images/${id}" alt="" draggable="false"><button class="x" type="button" title="Remove image">×</button><span class="rz" title="Drag to resize"></span></span></div>`;
+let saved=null, selAt=0;
+const clearSel=()=>ed.querySelectorAll('.i.sel').forEach(n=>n.classList.remove('sel'));
+const markSel=n=>{clearSel();n.classList.add('sel');selAt=Date.now()};
+document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&ed.contains(s.anchorNode)){saved=s.getRangeAt(0).cloneRange();if(Date.now()-selAt>300)clearSel()}});
+function removeImg(n){const id=n.dataset.id;n.remove();api('DELETE','/images/'+id).catch(()=>{});fixup();refreshEmpty();edit()}
+ed.addEventListener('click',e=>{
+  if(e.target.closest('.rz'))return;
+  const x=e.target.closest('.x'); if(x){removeImg(x.closest('.i'));return}
+  const im=e.target.closest('.i'); clearSel();
+  if(im&&e.target.tagName==='IMG')openLb(im.dataset.id);                 // tap image -> full view
+});
+ed.addEventListener('pointerdown',e=>{                                    // drag the green corner to resize (saved as % of page width)
+  const h=e.target.closest('.rz'); if(!h)return; e.preventDefault(); e.stopPropagation();
+  const box=h.closest('.i'), w=h.closest('.w'), full=box.clientWidth, x0=e.clientX, w0=w.getBoundingClientRect().width;
+  h.setPointerCapture(e.pointerId);
+  const mv=ev=>{const pct=Math.round(Math.max(60,Math.min(full,w0+ev.clientX-x0))/full*100);w.style.width=pct+'%';box.dataset.w=pct};
+  const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);edit()};
+  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);
+});
+/* full-view lightbox: tap picture to zoom between fit / actual size; Esc or tap outside to close */
+const lb=$('#lb'), lbImg=$('#lbImg'); let lbId=null;
+function openLb(id){lbId=id;lbImg.classList.remove('full');lbImg.src='/api/images/'+id;$('#lbDl').href='/api/images/'+id;$('#lbDl').download='image-'+id;lb.classList.remove('hide')}
+function closeLb(){lb.classList.add('hide');lbImg.removeAttribute('src');lbId=null}
+lb.onclick=e=>{if(e.target===lb)closeLb()};
+lbImg.onclick=()=>lbImg.classList.toggle('full');
+$('#lbX').onclick=closeLb;
+$('#lbDel').onclick=()=>{if(!confirm('Delete this image?'))return;const n=ed.querySelector(`.i[data-id="${lbId}"]`);closeLb();if(n)removeImg(n)};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!lb.classList.contains('hide'))closeLb()});
+function pickRange(){const s=getSelection();if(s.rangeCount&&ed.contains(s.anchorNode))return s.getRangeAt(0).cloneRange();return saved&&ed.contains(saved.startContainer)?saved.cloneRange():null}
+async function shrink(f){                      // keep uploads small: max 1600px wide, JPEG unless already small
+  if(f.type==='image/gif')return f;
+  try{
+    const bmp=await createImageBitmap(f), k=Math.min(1,1600/bmp.width);
+    if(k===1&&f.size<700e3)return f;
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.85)); return b&&b.size<f.size?b:f;
+  }catch{return f}
+}
+async function addImages(files){
+  if(!curSub)return; const sid=curSub;
+  for(const f of files){
+    const at=pickRange(); $('#status').textContent='Uploading image…';
+    try{
+      const b=await shrink(f);
+      const r=await fetch(`/api/subnotes/${sid}/images`,{method:'POST',headers:{'Content-Type':b.type||f.type},body:b});
+      if(!r.ok)throw 0; const {id}=await r.json();
+      if(curSub===sid)putImage(id,at);
+    }catch{$('#status').textContent='Image upload failed';alert('Could not upload the image (png, jpg, gif or webp, up to ~8 MB).')}
+  }
+}
+function putImage(id,at){
+  fixup(); const sel=getSelection();
+  if(at&&ed.contains(at.startContainer)){sel.removeAllRanges();sel.addRange(at)}else toEnd();
+  let r=sel.getRangeAt(0); if(!r.collapsed){r.deleteContents();r=sel.getRangeAt(0)}
+  const t=document.createElement('template');t.innerHTML=imgHTML(id);const im=t.content.firstChild,b=blockOf(r.startContainer);
+  if(!b)ed.append(im);
+  else if(isImg(b))b.after(im);
+  else{
+    const head=headText(b,r),tr=document.createRange();tr.selectNodeContents(b);tr.setStart(r.startContainer,r.startOffset);const tailTxt=tr.toString();
+    if(!head&&!tailTxt&&!b.className)b.replaceWith(im);                  // empty line becomes the image
+    else if(!head)b.before(im);                                          // caret at line start: image goes above
+    else if(!tailTxt)b.after(im);                                        // caret at line end: image goes below
+    else{const nb=document.createElement('div');nb.appendChild(tr.extractContents());fill(b);fill(nb);b.after(im);im.after(nb)}   // mid-line: split
+  }
+  const mk=()=>{const d=document.createElement('div');d.innerHTML='<br>';return d};
+  if(!im.previousElementSibling)im.before(mk());
+  let nx=im.nextElementSibling; if(!nx||isImg(nx)){nx=mk();im.after(nx)}
+  place(nx,0); if(!mob())ed.focus({preventScroll:true}); nx.scrollIntoView({block:'nearest'}); refreshEmpty(); edit();
+}
+ed.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+ed.addEventListener('drop',e=>{
+  const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')); if(!files.length)return; e.preventDefault();
+  let r=document.caretRangeFromPoint?document.caretRangeFromPoint(e.clientX,e.clientY):null;
+  if(!r&&document.caretPositionFromPoint){const p=document.caretPositionFromPoint(e.clientX,e.clientY);if(p){r=document.createRange();r.setStart(p.offsetNode,p.offset)}}
+  if(r&&ed.contains(r.startContainer)){const s=getSelection();s.removeAllRanges();s.addRange(r)}
+  addImages(files);
 });
 
 /* ---------- remembered UI state (survives refresh) ---------- */
@@ -223,6 +337,8 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preven
 const mob=()=>matchMedia('(max-width:640px)').matches;
 const openDrawer=()=>{$('#app').classList.add('drawer');$('#app').classList.toggle('lvl2',!!curNote)};
 const closeDrawer=()=>$('#app').classList.remove('drawer');
+$('#imgBtn').onmousedown=e=>e.preventDefault(); $('#imgBtn').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{const f=[...e.target.files];e.target.value='';if(f.length)addImages(f)};
 $('#menu').onclick=openDrawer; $('#scrim').onclick=closeDrawer; $('#toNotes').onclick=()=>$('#app').classList.remove('lvl2');
 setTheme(document.documentElement.dataset.theme||'light'); setFocus(LS.get('focus',false));
 
@@ -282,7 +398,7 @@ async function openSub(id){
     ed.contentEditable='true'; if(curSub===id){setDesc(r.description);if(!mob()){ed.focus();toEnd()}}
   } else if(!mob()){ed.focus();toEnd()}
 }
-function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
+function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);$('#imgBtn').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
 $('#delSub').onclick=()=>{
   if(!curSub||!confirm('Delete this subnote?'))return;
   clearTimeout(timer);pending=null;const id=curSub;

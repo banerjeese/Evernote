@@ -1,4 +1,4 @@
-import os
+import os, re, html
 from flask import Flask, jsonify, request, send_from_directory
 from mysql.connector import pooling
 
@@ -8,6 +8,7 @@ DB = dict(
     user=os.getenv("DB_USER", "dbuser"),
     password=os.getenv("DB_PASSWORD", "232527"),
     database=os.getenv("DB_NAME", "ProductivityAnalytics"),
+    charset="utf8mb4",
 )
 USER_ID = 1  # single user, no auth
 
@@ -15,6 +16,12 @@ pool = pooling.MySQLConnectionPool(
     pool_name="notes", pool_size=8, pool_reset_session=False, autocommit=True, **DB
 )
 app = Flask(__name__, static_folder="static", static_url_path="")
+
+
+def snip(raw):
+    t = re.sub(r"<[^>]*$", "", (raw or "").replace("<!--rt-->", ""))
+    t = html.unescape(re.sub(r"<[^>]+>", " ", t))
+    return re.sub(r"\s+", " ", t).strip()[:140]
 
 
 def run(sql, args=(), fetch="all"):
@@ -85,13 +92,16 @@ def del_note(nid):
 @app.get("/api/notes/<int:nid>/subnotes")
 def list_subs(nid):
     # snippet only: full description is fetched when a subnote is opened
-    return jsonify(run(
+    rows = run(
         f"""SELECT s.subnote_id id, s.subnote_topic topic,
-                   LEFT(IFNULL(s.description,''),140) snippet,
+                   LEFT(IFNULL(s.description,''),800) snippet,
                    {D.format('s.subnote_date')} date, {T.format('s.subnote_time')} time
             FROM subnotes s JOIN notes n ON n.note_id=s.note_id
             WHERE s.note_id=%s AND n.userId=%s ORDER BY s.subnote_id DESC""",
-        (nid, USER_ID)))
+        (nid, USER_ID))
+    for r in rows:
+        r["snippet"] = snip(r["snippet"])
+    return jsonify(rows)
 
 
 @app.post("/api/notes/<int:nid>/subnotes")

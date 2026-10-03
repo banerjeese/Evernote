@@ -62,8 +62,12 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .body{flex:1;overflow-y:auto;padding:28px 48px;display:flex;flex-direction:column}
 .title{border:0;outline:0;font-size:30px;font-weight:700;width:100%;padding:0 0 12px;border-bottom:1px solid var(--line);margin-bottom:16px}
 .title::placeholder{color:var(--ph)}
-.desc{flex:1;border:0;outline:0;resize:none;font-size:16px;line-height:1.65;width:100%;min-height:300px}
-.desc::placeholder{color:var(--ph)}
+.desc{flex:1;outline:0;font-size:16px;line-height:1.65;width:100%;min-height:300px;white-space:pre-wrap;word-break:break-word;padding-bottom:30vh;-webkit-tap-highlight-color:transparent}
+.desc>div{min-height:1.65em}
+.desc .b{position:relative;padding-left:1.8em}
+.desc .b::before{content:"•";position:absolute;left:.6em}
+.desc .h{font-size:1.3em;font-weight:700;line-height:1.4;margin:.55em 0 .1em}
+.desc.empty>div:first-child::before{content:"Start writing…";color:var(--ph);pointer-events:none}
 .panels{display:contents}
 .tbl{display:flex;align-items:center;gap:8px}.tbl .tbtn{margin-left:0}
 #menu,.scrim,#toNotes,.brand .themebtn{display:none}
@@ -120,7 +124,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
     <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">⇤ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
     <div class="body hide" id="edbody">
       <input class="title" id="title" placeholder="Title" maxlength="255">
-      <textarea class="desc" id="desc" placeholder="Start writing…"></textarea>
+      <div class="desc empty" id="desc" contenteditable="true" spellcheck="true"><div><br></div></div>
     </div>
     <div class="empty" id="edempty" style="margin-top:80px">Select a subnote to read or edit it.</div>
   </main>
@@ -132,6 +136,81 @@ const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Conten
 const fmt=(d,t)=>{if(!d)return'';const x=new Date(d+'T00:00');return x.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+(t?' · '+t:'')};
 
 let notes=[], subs={}, descs={}, curNote=null, curSub=null, pending=null, timer=null, filter='';
+
+/* ---------- description editor: line blocks (normal / bullet 'b' / heading 'h') ---------- */
+const ed=$('#desc'), MARK=['▸ ','🔴 '], KEEP=new Set(['b','h']);
+const blk=(c,t)=>`<div${KEEP.has(c)?` class="${c}"`:''}>${t?esc(t):'<br>'}</div>`;
+function toHTML(raw){            // db value -> editor html (old plain-text notes still work)
+  if(!raw)return'<div><br></div>';
+  if(raw.startsWith('<!--rt-->')){
+    const d=new DOMParser().parseFromString(raw,'text/html');
+    return [...d.body.children].map(x=>blk(x.className,x.textContent)).join('')||'<div><br></div>';
+  }
+  return raw.split('\n').map(l=>blk('',l)).join('');
+}
+const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>blk(d.className,d.textContent.replace(/\u00a0/g,' '))).join('').replace(/<br>/g,'');
+const plain=()=>[...ed.children].map(d=>d.textContent).join(' ').replace(/\s+/g,' ').trim();
+const refreshEmpty=()=>ed.classList.toggle('empty',ed.children.length===1&&!ed.firstChild.className&&!ed.textContent);
+function setDesc(raw){ed.innerHTML=toHTML(raw);refreshEmpty()}
+function place(n,o){const r=document.createRange();r.setStart(n,o);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+function toEnd(){const l=ed.lastChild,t=l.lastChild;t&&t.nodeType===3?place(t,t.length):place(l,0)}
+const blockOf=n=>{while(n&&n.parentNode!==ed)n=n.parentNode;return n&&n.nodeType===1&&n.tagName==='DIV'?n:null};
+const headText=(b,r)=>{const x=document.createRange();x.setStart(b,0);x.setEnd(r.startContainer,r.startOffset);return x.toString()};
+const fill=b=>{if(!b.textContent&&!b.querySelector('br'))b.appendChild(document.createElement('br'))};
+function fixup(){                // keep editor children as <div> lines only
+  const sel=getSelection(),an=sel.anchorNode,ao=sel.anchorOffset,foc=document.activeElement===ed;let moved=false;
+  [...ed.childNodes].forEach(n=>{
+    if(n.nodeType===1&&n.tagName==='DIV')return; moved=true;
+    if(n.nodeType===1&&n.tagName==='BR'){n.remove();return}
+    const d=document.createElement('div');n.replaceWith(d);d.appendChild(n);
+  });
+  if(!ed.firstChild){ed.innerHTML='<div><br></div>';moved=true}
+  if(moved&&foc){an&&an!==ed&&ed.contains(an)?place(an,ao):place(ed.firstChild,0)}
+}
+function enter(){
+  fixup(); const sel=getSelection(); if(!sel.rangeCount)return; let r=sel.getRangeAt(0);
+  if(!r.collapsed){r.deleteContents();r=sel.getRangeAt(0)}
+  const b=blockOf(r.startContainer); if(!b)return;
+  const cls=b.className, tr=document.createRange(); tr.selectNodeContents(b); tr.setStart(r.startContainer,r.startOffset);
+  const tail=tr.extractContents(), head=b.textContent, tailTxt=tail.textContent;
+  const mk=MARK.find(m=>head.startsWith(m)||head===m.trim());
+  if(cls==='b'&&!head&&!tailTxt){b.className='';fill(b);place(b,0);return}                       // 2nd Enter leaves the bullet list
+  if(mk&&head.trim()===mk.trim()&&!tailTxt){b.textContent='';fill(b);place(b,0);return}          // 2nd Enter leaves ▸ / 🔴 list
+  const nb=document.createElement('div'); if(cls==='b')nb.className='b';
+  const keep=mk&&head.length>=mk.length?mk:'';                                                   // ▸ / 🔴 lines continue
+  if(keep)nb.appendChild(document.createTextNode(keep));
+  nb.appendChild(tail); fill(b); fill(nb); b.after(nb);
+  keep?place(nb.firstChild,keep.length):place(nb,0);
+  nb.scrollIntoView({block:'nearest'});
+}
+const TRIG=/^(-|>>|>|redimp)[ \u00a0]$/i;
+function shortcuts(){            // runs after typing; converts "- ", ">> ", "> ", "redimp " at the caret
+  const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return; const r=sel.getRangeAt(0),b=blockOf(r.startContainer); if(!b)return;
+  const m=headText(b,r).match(TRIG); if(!m)return; const k=m[1].toLowerCase();
+  if((k==='-'||k==='>>')&&b.className)return;
+  const x=document.createRange();x.setStart(b,0);x.setEnd(r.startContainer,r.startOffset);x.deleteContents();
+  if(k==='-'){b.className='b';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
+  else if(k==='>>'){b.className='h';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
+  else document.execCommand('insertText',false,k==='>'?'▸ ':'🔴 ');
+}
+ed.addEventListener('beforeinput',e=>{
+  const t=e.inputType;
+  if(t==='insertParagraph'||t==='insertLineBreak'){e.preventDefault();enter();edit();return}
+  if(t==='deleteContentBackward'){                      // Backspace at line start: bullet/heading -> normal line
+    const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return;
+    const b=blockOf(sel.anchorNode); if(b&&b.className&&!headText(b,sel.getRangeAt(0))){e.preventDefault();b.className='';edit()}
+  }
+});
+ed.addEventListener('input',e=>{if(!e.isComposing){fixup();shortcuts()}edit()});
+ed.addEventListener('compositionend',()=>setTimeout(()=>{shortcuts();edit()},0));
+ed.addEventListener('paste',e=>{                       // paste as plain text; "- item" lines become bullets
+  e.preventDefault(); const t=(e.clipboardData.getData('text/plain')||'').replace(/\r/g,'');
+  t.split('\n').forEach((ln,i)=>{
+    if(i)enter(); const m=ln.match(/^\s*[-*•]\s+(.*)$/);
+    if(m){const b=blockOf(getSelection().anchorNode);if(b&&!b.className&&!b.textContent)b.className='b';ln=m[1]}
+    if(ln)document.execCommand('insertText',false,ln);
+  }); edit();
+});
 
 /* ---------- remembered UI state (survives refresh) ---------- */
 const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem('nt_'+k));return v??d}catch{return d}},set(k,v){try{localStorage.setItem('nt_'+k,JSON.stringify(v))}catch{}}};
@@ -197,11 +276,11 @@ $('#newSub').onclick=async()=>{
 async function openSub(id){
   await flush(); curSub=id; LS.set('sub',id); renderSubs(); showEditor(true); closeDrawer();
   const s=subs[curNote].find(x=>x.id===id);
-  $('#title').value=s.topic; $('#desc').value=descs[id]??''; $('#status').textContent=fmt(s.date,s.time);
+  $('#title').value=s.topic; setDesc(descs[id]??''); $('#status').textContent=fmt(s.date,s.time);
   if(descs[id]===undefined){
-    $('#desc').disabled=true; const r=await api('GET','/subnotes/'+id); descs[id]=r.description;
-    $('#desc').disabled=false; if(curSub===id){$('#desc').value=r.description;if(!mob())$('#desc').focus()}
-  } else if(!mob())$('#desc').focus();
+    ed.contentEditable='false'; const r=await api('GET','/subnotes/'+id); descs[id]=r.description;
+    ed.contentEditable='true'; if(curSub===id){setDesc(r.description);if(!mob()){ed.focus();toEnd()}}
+  } else if(!mob()){ed.focus();toEnd()}
 }
 function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
 $('#delSub').onclick=()=>{
@@ -212,8 +291,8 @@ $('#delSub').onclick=()=>{
 
 /* ---------- autosave (debounced) ---------- */
 function edit(){
-  if(!curSub)return; const s=subs[curNote].find(x=>x.id===curSub), t=$('#title').value, d=$('#desc').value;
-  s.topic=t; s.snippet=d.slice(0,140); descs[curSub]=d; pending={id:curSub,topic:t||'Untitled',description:d};
+  if(!curSub)return; const s=subs[curNote].find(x=>x.id===curSub), t=$('#title').value, d=toRaw();
+  s.topic=t; s.snippet=plain().slice(0,140); refreshEmpty(); descs[curSub]=d; pending={id:curSub,topic:t||'Untitled',description:d};
   const c=document.querySelector(`.card[data-id="${curSub}"]`); if(c){c.querySelector('.tt').textContent=t||'Untitled';c.querySelector('.sn').textContent=s.snippet}
   $('#status').textContent='Saving…'; clearTimeout(timer); timer=setTimeout(flush,600);
 }
@@ -222,7 +301,8 @@ async function flush(){
   try{await api('PATCH','/subnotes/'+p.id,{topic:p.topic,description:p.description});if(curSub===p.id)$('#status').textContent='Saved'}
   catch{pending=pending||p;$('#status').textContent='Save failed — retrying';timer=setTimeout(flush,3000)}
 }
-$('#title').oninput=edit; $('#desc').oninput=edit;
+$('#title').oninput=edit;
+$('#title').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ed.focus();place(ed.firstChild,0)}};
 addEventListener('beforeunload',()=>{if(pending)navigator.sendBeacon&&fetch('/api/subnotes/'+pending.id,{method:'PATCH',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(pending)})});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
 if(mob()&&!LS.get('sub'))openDrawer();

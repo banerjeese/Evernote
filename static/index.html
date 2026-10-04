@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Notes</title>
+<title>AdiNotes</title>
 <script>try{document.documentElement.dataset.theme=JSON.parse(localStorage.nt_theme)||"light"}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .card .dt{color:var(--t2);font-size:12px;margin-top:6px}
 .empty{padding:50px 24px;text-align:center;color:var(--t2);line-height:1.5}
 /* editor */
-.ed{display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+.ed{position:relative;display:flex;flex-direction:column;min-height:0;background:var(--bg)}
 .tb{height:48px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;color:var(--t2);font-size:12px}
 .del{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:#e0503f;margin-left:6px}
 .tbtn{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--t2);margin-left:6px}
@@ -68,6 +68,7 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .desc .b::before{content:"•";position:absolute;left:.6em}
 .desc .h{font-size:1.3em;font-weight:700;line-height:1.4;margin:.55em 0 .1em}
 .desc.empty>div:first-child::before{content:"Start writing…";color:var(--ph);pointer-events:none}
+.desc>div[data-l="1"]{margin-left:2em}.desc>div[data-l="2"]{margin-left:4em}.desc>div[data-l="3"]{margin-left:6em}.desc>div[data-l="4"]{margin-left:8em}.desc>div[data-l="5"]{margin-left:10em}
 .desc .i{position:relative;margin:.5em 0;user-select:none;-webkit-user-select:none}
 .desc .i .w{position:relative;display:block;width:fit-content;max-width:100%}
 .desc .i .w[style] img{width:100%}
@@ -112,15 +113,49 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .nitem .acts{display:flex}.nitem .ct,.nitem:hover .ct{display:inline}
 .ib{padding:6px 9px}
 .desc .i .rz{width:26px;height:26px}
+.desc>div[data-l="1"]{margin-left:1.4em}.desc>div[data-l="2"]{margin-left:2.8em}.desc>div[data-l="3"]{margin-left:4.2em}.desc>div[data-l="4"]{margin-left:5.6em}.desc>div[data-l="5"]{margin-left:7em}
+.tb .tbtn,.tb .del{padding:4px 7px;margin-left:4px}
+.tbl{min-width:0;flex:1}
+#status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
 @media(prefers-reduced-motion:reduce){.panels,.scrim{transition:none}}
+.dlmenu{position:absolute;top:46px;right:14px;z-index:30;background:var(--bg);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:6px;min-width:240px}
+.dlmenu button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-size:14px}
+.dlmenu button:hover{background:var(--hov)}
+#printRoot{display:none}
+#pdfStage{position:absolute;left:0;top:0;width:673px;z-index:-1;background:#fff;color:#222;--bg:#fff;--t:#222;--t2:#777;--line:#ddd}
+#pdfStage .pg{width:673px;background:#fff}
+#pdfStage .desc{padding:0;min-height:0;flex:none;width:100%}
+#pdfStage .x,#pdfStage .rz{display:none!important}
+#pdfStage .i img{border:0}
+.pr-head{margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #ddd}
+.pr-brand{color:#888;font-size:12px;letter-spacing:.3px;margin-bottom:8px}
+.pr-title{font-size:26px;font-weight:700;line-height:1.25}
+.pr-by{color:#888;font-size:14px;margin-top:4px}
+@media print{
+@page{size:A4;margin:16mm 16mm 18mm;
+  @bottom-left{content:"Page designed & formatted with ❤️ by Adirohah";font:11px sans-serif;color:#888}
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:11px sans-serif;color:#888}}
+html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+html[data-theme]{--bg:#fff;--t:#222;--t2:#777;--line:#ddd}
+body{color:#222}
+body>:not(#printRoot){display:none!important}
+#printRoot{display:block;color:#222}
+#printRoot.fb{padding:12mm 14mm 16mm}
+.pr-desc{min-height:0!important;padding:0!important;height:auto!important;flex:none!important}
+.pr-desc.empty>div:first-child::before{content:""}
+.pr-desc>div,.pr-desc .i{break-inside:avoid}
+.pr-desc .i .x,.pr-desc .i .rz{display:none!important}
+.pr-desc .i img{border:0}
+.pr-fb{position:fixed;bottom:4mm;left:10mm;font-size:11px;color:#888}
+}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="panels">
   <aside class="side">
-    <div class="brand"><span class="logo">✎</span>Notes<button class="ib themebtn" title="Dark / light mode">🌙</button></div>
+    <div class="brand"><span class="logo">✎</span>AdiNotes<button class="ib themebtn" title="Dark / light mode">🌙</button></div>
     <button class="newbtn" id="newNote">＋ New Note</button>
     <div class="sec">NOTES</div>
     <div class="nlist" id="nlist"></div>
@@ -137,7 +172,8 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
   </div>
   <div class="scrim" id="scrim"></div>
   <main class="ed">
-    <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn hide" id="imgBtn" title="Insert image (or just paste / drop one)">🖼</button><input type="file" id="file" accept="image/*" multiple hidden><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">⇤ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
+    <div class="tb"><span class="tbl"><button class="tbtn" id="menu" title="Notes and subnotes">☰</button><span id="status"></span></span><span><button class="tbtn hide" id="imgBtn" title="Insert image (or just paste / drop one)">🖼</button><input type="file" id="file" accept="image/*" multiple hidden><button class="tbtn hide" id="outBtn" title="Outdent (Shift+Tab, or Backspace at line start)">⇤</button><button class="tbtn hide" id="indBtn" title="Indent (Tab)">⇥</button><button class="tbtn hide" id="dlBtn" title="Download this note">⬇</button><button class="tbtn themebtn" title="Dark / light mode">🌙</button><button class="tbtn" id="focus" title="Hide / show side panels (Ctrl+\)">◧ Hide panels</button><button class="del hide" id="delSub">Delete</button></span></div>
+    <div class="dlmenu hide" id="dlMenu"><button data-f="docx">📝 Word / Google Docs (.docx)</button><button data-f="pdf">📕 PDF</button></div>
     <div class="body hide" id="edbody">
       <input class="title" id="title" placeholder="Title" maxlength="255">
       <div class="desc empty" id="desc" contenteditable="true" spellcheck="true"><div><br></div></div>
@@ -155,17 +191,20 @@ const fmt=(d,t)=>{if(!d)return'';const x=new Date(d+'T00:00');return x.toLocaleD
 let notes=[], subs={}, descs={}, curNote=null, curSub=null, pending=null, timer=null, filter='';
 
 /* ---------- description editor: line blocks (normal / bullet 'b' / heading 'h') ---------- */
-const ed=$('#desc'), MARK=['▸ ','🔴 '], KEEP=new Set(['b','h']);
-const blk=(c,t)=>`<div${KEEP.has(c)?` class="${c}"`:''}>${t?esc(t):'<br>'}</div>`;
+const ed=$('#desc'), MARK=['▸ ','⏩ ','🔴 ','🔵 ','🟢 ','🟡 '], KEEP=new Set(['b','h']);
+const EMO={'>':'⏩','redimp':'🔴','blueimp':'🔵','greenimp':'🟢','yellowimp':'🟡'};
+const lv=n=>{const v=+n.dataset.l;return v>=1&&v<=5?v:0};                       // indent level of a line (0-5)
+const setLv=(b,n)=>n>0?b.setAttribute('data-l',n):b.removeAttribute('data-l');
+const blk=(c,t,l)=>`<div${KEEP.has(c)?` class="${c}"`:''}${l?` data-l="${l}"`:''}>${t?esc(t):'<br>'}</div>`;
 function toHTML(raw){            // db value -> editor html (old plain-text notes still work)
   if(!raw)return'<div><br></div>';
   if(raw.startsWith('<!--rt-->')){
     const d=new DOMParser().parseFromString(raw,'text/html');
-    return [...d.body.children].map(x=>x.classList.contains('i')&&/^\d+$/.test(x.dataset.id||'')?imgHTML(x.dataset.id,+x.dataset.w>=10&&+x.dataset.w<=100?+x.dataset.w:0):blk(x.className,x.textContent)).join('')||'<div><br></div>';
+    return [...d.body.children].map(x=>x.classList.contains('i')&&/^\d+$/.test(x.dataset.id||'')?imgHTML(x.dataset.id,+x.dataset.w>=10&&+x.dataset.w<=100?+x.dataset.w:0):blk(x.className,x.textContent,lv(x))).join('')||'<div><br></div>';
   }
   return raw.split('\n').map(l=>blk('',l)).join('');
 }
-const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>isImg(d)?`<div class="i" data-id="${d.dataset.id}"${d.dataset.w?` data-w="${d.dataset.w}"`:''}></div>`:blk(d.className,d.textContent.replace(/\u00a0/g,' '))).join('').replace(/<br>/g,'');
+const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>isImg(d)?`<div class="i" data-id="${d.dataset.id}"${d.dataset.w?` data-w="${d.dataset.w}"`:''}></div>`:blk(d.className,d.textContent.replace(/\u00a0/g,' '),lv(d))).join('').replace(/<br>/g,'');
 const plain=()=>[...ed.children].map(d=>isImg(d)?'🖼':d.textContent).join(' ').replace(/\s+/g,' ').trim();
 const refreshEmpty=()=>ed.classList.toggle('empty',ed.children.length===1&&!ed.firstChild.className&&!ed.textContent);
 function setDesc(raw){ed.innerHTML=toHTML(raw);refreshEmpty()}
@@ -193,16 +232,17 @@ function enter(){
   const cls=b.className, tr=document.createRange(); tr.selectNodeContents(b); tr.setStart(r.startContainer,r.startOffset);
   const tail=tr.extractContents(), head=b.textContent, tailTxt=tail.textContent;
   const mk=MARK.find(m=>head.startsWith(m)||head===m.trim());
-  if(cls==='b'&&!head&&!tailTxt){b.className='';fill(b);place(b,0);return}                       // 2nd Enter leaves the bullet list
-  if(mk&&head.trim()===mk.trim()&&!tailTxt){b.textContent='';fill(b);place(b,0);return}          // 2nd Enter leaves ▸ / 🔴 list
-  const nb=document.createElement('div'); if(cls==='b')nb.className='b';
+  if(cls==='b'&&!head&&!tailTxt){b.className='';setLv(b,0);fill(b);place(b,0);return}                       // 2nd Enter leaves the bullet list
+  if(mk&&head.trim()===mk.trim()&&!tailTxt){b.textContent='';setLv(b,0);fill(b);place(b,0);return}
+  if(!cls&&!head&&!tailTxt&&lv(b)){setLv(b,0);fill(b);place(b,0);return}                          // 2nd Enter on an empty indented line leaves the indent          // 2nd Enter leaves ▸ / 🔴 list
+  const nb=document.createElement('div'); if(cls==='b')nb.className='b'; if(lv(b))setLv(nb,lv(b));   // next line keeps the indent
   const keep=mk&&head.length>=mk.length?mk:'';                                                   // ▸ / 🔴 lines continue
   if(keep)nb.appendChild(document.createTextNode(keep));
   nb.appendChild(tail); fill(b); fill(nb); b.after(nb);
   keep?place(nb.firstChild,keep.length):place(nb,0);
   nb.scrollIntoView({block:'nearest'});
 }
-const TRIG=/^(-|>>|>|redimp)[ \u00a0]$/i;
+const TRIG=/^(-|>>|>|redimp|blueimp|greenimp|yellowimp)[ \u00a0]$/i;
 function shortcuts(){            // runs after typing; converts "- ", ">> ", "> ", "redimp " at the caret
   const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return; const r=sel.getRangeAt(0),b=blockOf(r.startContainer); if(!b||isImg(b))return;
   const m=headText(b,r).match(TRIG); if(!m)return; const k=m[1].toLowerCase();
@@ -210,7 +250,7 @@ function shortcuts(){            // runs after typing; converts "- ", ">> ", "> 
   const x=document.createRange();x.setStart(b,0);x.setEnd(r.startContainer,r.startOffset);x.deleteContents();
   if(k==='-'){b.className='b';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
   else if(k==='>>'){b.className='h';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
-  else document.execCommand('insertText',false,k==='>'?'▸ ':'🔴 ');
+  else document.execCommand('insertText',false,EMO[k]+' ');
 }
 ed.addEventListener('beforeinput',e=>{
   const t=e.inputType;
@@ -221,6 +261,7 @@ ed.addEventListener('beforeinput',e=>{
     const r=sel.getRangeAt(0), b=blockOf(sel.anchorNode); if(!b||isImg(b))return;
     if(t==='deleteContentBackward'){
       if(!headText(b,r)){
+        if(lv(b)){e.preventDefault();setLv(b,lv(b)-1);edit();return}                              // Backspace at line start outdents first
         const pv=b.previousElementSibling;
         if(pv&&isImg(pv)){e.preventDefault();markSel(pv);return}                                   // 1st Backspace selects the image above
         if(b.className){e.preventDefault();b.className='';edit()}                                  // bullet/heading -> normal line
@@ -232,6 +273,14 @@ ed.addEventListener('beforeinput',e=>{
   }
 });
 ed.addEventListener('input',e=>{if(!e.isComposing){fixup();shortcuts()}edit()});
+function indent(d){                                    // indent / outdent the current line (or every selected line)
+  fixup(); const sel=getSelection();
+  if(!(sel.rangeCount&&ed.contains(sel.anchorNode))&&saved){sel.removeAllRanges();sel.addRange(saved.cloneRange())}
+  if(!sel.rangeCount)return; const r=sel.getRangeAt(0);
+  const bl=(r.collapsed?[blockOf(r.startContainer)]:[...ed.children].filter(c=>r.intersectsNode(c))).filter(c=>c&&!isImg(c));
+  bl.forEach(b=>setLv(b,Math.max(0,Math.min(5,lv(b)+d)))); edit();
+}
+ed.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();indent(e.shiftKey?-1:1)}});
 ed.addEventListener('compositionend',()=>setTimeout(()=>{shortcuts();edit()},0));
 ed.addEventListener('paste',e=>{                       // image -> inserted; else plain text ("- item" lines become bullets)
   const imgs=[...e.clipboardData.files].filter(f=>f.type.startsWith('image/'));
@@ -329,7 +378,7 @@ ed.addEventListener('drop',e=>{
 /* ---------- remembered UI state (survives refresh) ---------- */
 const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem('nt_'+k));return v??d}catch{return d}},set(k,v){try{localStorage.setItem('nt_'+k,JSON.stringify(v))}catch{}}};
 function setTheme(t){document.documentElement.dataset.theme=t;document.querySelectorAll('.themebtn').forEach(b=>b.textContent=t==='dark'?'☀️':'🌙');LS.set('theme',t)}
-function setFocus(on){$('#app').classList.toggle('focus',on);$('#focus').textContent=on?'⇥ Show panels':'⇤ Hide panels';LS.set('focus',on)}
+function setFocus(on){$('#app').classList.toggle('focus',on);$('#focus').textContent=on?'◨ Show panels':'◧ Hide panels';LS.set('focus',on)}
 document.querySelectorAll('.themebtn').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('#focus').onclick=()=>setFocus(!$('#app').classList.contains('focus'));
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preventDefault();$('#focus').click()}});
@@ -339,6 +388,66 @@ const openDrawer=()=>{$('#app').classList.add('drawer');$('#app').classList.togg
 const closeDrawer=()=>$('#app').classList.remove('drawer');
 $('#imgBtn').onmousedown=e=>e.preventDefault(); $('#imgBtn').onclick=()=>$('#file').click();
 $('#file').onchange=e=>{const f=[...e.target.files];e.target.value='';if(f.length)addImages(f)};
+$('#indBtn').onmousedown=$('#outBtn').onmousedown=e=>e.preventDefault(); $('#indBtn').onclick=()=>indent(1); $('#outBtn').onclick=()=>indent(-1);
+/* download: txt / docx are built by the server from the saved note; PDF uses the browser's print-to-PDF with a clean print layout */
+/* ---------- real PDF download: pages are laid out here, drawn with html2canvas, assembled with jsPDF ---------- */
+const LIBS=['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'], _lj={};
+const loadJs=u=>_lj[u]||(_lj[u]=new Promise((ok,no)=>{const x=document.createElement('script');x.src=u;x.onload=ok;x.onerror=()=>{delete _lj[u];no(new Error('load '+u))};document.head.appendChild(x)}));
+const splitTitle=t=>{t=(t||'').trim();const m=t.match(/^(.*?)\s*\{\s*(by\b[^}]*?)\s*\}\s*$/i);return m&&m[1].trim()?{title:m[1].trim(),by:m[2].trim()}:{title:t||'Untitled',by:''}};   // "Topic {by: Name}"
+function mkHead(){const {title,by}=splitTitle($('#title').value),h=document.createElement('div');h.className='pr-head';
+  const add=(c,t)=>{const d=document.createElement('div');d.className=c;d.textContent=t;h.append(d)};
+  add('pr-brand','✎ AdiNotes');add('pr-title',title);if(by)add('pr-by',by);return h}
+function pdfFooter(doc,i,n){                               // left: Page designed & formatted with ❤ by Adirohah   |   right: Page i of n
+  const y=289,r=.7; doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(130,130,130);
+  doc.text('Page designed & formatted with',16,y); const cx=16+doc.getTextWidth('Page designed & formatted with ')+1.7, cy=y-1.5;
+  doc.setFillColor(229,57,53); doc.circle(cx-.85*r,cy,r,'F'); doc.circle(cx+.85*r,cy,r,'F'); doc.triangle(cx-1.62*r,cy+.55*r,cx+1.62*r,cy+.55*r,cx,cy+2.9*r,'F');   // heart
+  doc.text('by Adirohah',cx+1.85*r+1.2,y); doc.text(`Page ${i} of ${n}`,194,y,{align:'right'});
+}
+async function makePdf(){
+  const st=$('#status'),prev=st.textContent; st.textContent='Making PDF…'; let stage;
+  try{
+    await Promise.all([...LIBS.map(loadJs),document.fonts?document.fonts.ready:0]);
+    const {jsPDF}=window.jspdf, PH=994;                    // page content: 178 x 263 mm  =  673 x 994 css px
+    const c=ed.cloneNode(true); c.removeAttribute('id'); c.removeAttribute('contenteditable'); c.classList.remove('empty'); c.querySelectorAll('.sel').forEach(n=>n.classList.remove('sel'));
+    await Promise.all([...c.querySelectorAll('img')].map(i=>i.decode?i.decode().catch(()=>{}):0));
+    stage=document.createElement('div'); stage.id='pdfStage'; document.body.appendChild(stage);
+    const pages=[], mk=first=>{
+      const el=document.createElement('div'); el.className='pg';
+      if(first)el.append(mkHead());
+      const d=document.createElement('div'); d.className='desc'; el.append(d); stage.append(el); const p={el,d}; pages.push(p); return p};
+    let pg=mk(true);
+    for(const b of [...c.children]){pg.d.append(b); if(pg.el.offsetHeight>PH&&pg.d.children.length>1){pg=mk(false);pg.d.append(b)}}   // fill pages line by line
+    const doc=new jsPDF({unit:'mm',format:'a4'}), n=pages.length;
+    for(let i=0;i<n;i++){
+      const cv=await html2canvas(pages[i].el,{scale:2,backgroundColor:'#fff',logging:false});
+      let w=178,h=cv.height/cv.width*178; if(h>263){h=263;w=cv.width/cv.height*263}
+      if(i)doc.addPage(); doc.addImage(cv.toDataURL('image/jpeg',.92),'JPEG',16,16,w,h); pdfFooter(doc,i+1,n);
+    }
+    doc.save((((splitTitle($('#title').value).title).replace(/[\\/:*?"<>|\r\n]+/g,'-').trim().slice(0,80))||'note')+'.pdf');
+  }catch(e){console.error(e);alert('Could not create the PDF. The PDF tool loads from the internet the first time, so please check your connection and try again.')}
+  finally{if(stage)stage.remove();st.textContent=prev}
+}
+function buildPrint(){                                   // clean print copy: brand line under the title (footer text comes from @page above)
+  const old=document.getElementById('printRoot'); if(old)old.remove();
+  const c=ed.cloneNode(true); c.removeAttribute('id'); c.removeAttribute('contenteditable'); c.classList.add('pr-desc'); c.querySelectorAll('.sel').forEach(n=>n.classList.remove('sel'));
+  const root=document.createElement('div'); root.id='printRoot';
+  root.appendChild(mkHead());
+  root.appendChild(c);
+  const cm=/Chrome\/(\d+)/.exec(navigator.userAgent);
+  if(!(cm&&+cm[1]>=131)){root.classList.add('fb');const f=document.createElement('div');f.className='pr-fb';f.textContent='Page designed & formatted with ❤️ by Adirohah';root.appendChild(f)}   // Safari/Firefox: no page-margin boxes
+  document.body.appendChild(root); return root;
+}
+addEventListener('beforeprint',()=>{if(!document.getElementById('printRoot'))buildPrint()});
+addEventListener('afterprint',()=>{const r=document.getElementById('printRoot');if(r)r.remove()});
+$('#dlBtn').onmousedown=e=>e.preventDefault();
+$('#dlBtn').onclick=e=>{e.stopPropagation();$('#dlMenu').classList.toggle('hide')};
+document.addEventListener('click',e=>{if(!e.target.closest('#dlMenu'))$('#dlMenu').classList.add('hide')});
+$('#dlMenu').onclick=async e=>{
+  const f=e.target.closest('button')?.dataset.f; if(!f||!curSub)return;
+  $('#dlMenu').classList.add('hide'); await flush();             // make sure the latest text/images are saved first
+  if(f==='pdf'){await makePdf();return}
+  const a=document.createElement('a');a.href=`/api/subnotes/${curSub}/export.${f}`;a.download='';document.body.appendChild(a);a.click();a.remove();
+};
 $('#menu').onclick=openDrawer; $('#scrim').onclick=closeDrawer; $('#toNotes').onclick=()=>$('#app').classList.remove('lvl2');
 setTheme(document.documentElement.dataset.theme||'light'); setFocus(LS.get('focus',false));
 
@@ -398,7 +507,7 @@ async function openSub(id){
     ed.contentEditable='true'; if(curSub===id){setDesc(r.description);if(!mob()){ed.focus();toEnd()}}
   } else if(!mob()){ed.focus();toEnd()}
 }
-function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);$('#imgBtn').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
+function showEditor(on){$('#edbody').classList.toggle('hide',!on);$('#edempty').classList.toggle('hide',on);$('#delSub').classList.toggle('hide',!on);$('#imgBtn').classList.toggle('hide',!on);$('#indBtn').classList.toggle('hide',!on);$('#outBtn').classList.toggle('hide',!on);$('#dlBtn').classList.toggle('hide',!on);if(!on)$('#status').textContent=''}
 $('#delSub').onclick=()=>{
   if(!curSub||!confirm('Delete this subnote?'))return;
   clearTimeout(timer);pending=null;const id=curSub;

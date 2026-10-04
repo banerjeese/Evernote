@@ -1,5 +1,5 @@
-import os, re, html
-from flask import Flask, Response, jsonify, request, send_from_directory
+import io, os, re, html
+from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 from mysql.connector import pooling
 
 DB = dict(
@@ -45,8 +45,8 @@ def run(sql, args=(), fetch="all"):
         conn.close()
 
 
-D = "DATE_FORMAT({0},'%%Y-%%m-%%d')"
-T = "TIME_FORMAT({0},'%%H:%%i')"
+D = "CAST({0} AS CHAR)"            # 2026-10-04
+T = "LEFT(CAST({0} AS CHAR),5)"    # 10:30
 
 
 IMG_SQL = """CREATE TABLE IF NOT EXISTS note_images (
@@ -173,6 +173,107 @@ def del_sub(sid):
     run("DELETE s FROM subnotes s JOIN notes n ON n.note_id=s.note_id "
         "WHERE s.subnote_id=%s AND n.userId=%s", (sid, USER_ID), "write")
     return jsonify(ok=True)
+
+
+# ---------- export (docx) ----------
+def parse_blocks(raw):
+    """Saved description -> list of lines: {t: p|b|h|img, text, l(indent), id, w}"""
+    raw = raw or ""
+    if not raw.startswith("<!--rt-->"):  # old plain-text notes
+        return [dict(t="p", text=ln, l=0) for ln in raw.split("\n")]
+    out = []
+    for m in re.finditer(r"<div([^>]*)>(.*?)</div>", raw[9:], re.S):
+        attrs, inner = m.groups()
+        cls = (re.search(r'class="([^"]*)"', attrs) or [None, ""])[1]
+        lvl = int((re.search(r'data-l="(\d)"', attrs) or [None, 0])[1])
+        if cls.split(" ")[0] == "i":
+            idm, wm = re.search(r'data-id="(\d+)"', attrs), re.search(r'data-w="(\d+)"', attrs)
+            if idm:
+                out.append(dict(t="img", id=int(idm.group(1)), w=int(wm.group(1)) if wm else 0, l=0))
+            continue
+        text = html.unescape(re.sub(r"<[^>]+>", "", inner)).replace("\u00a0", " ")
+        out.append(dict(t={"b": "b", "h": "h"}.get(cls, "p"), text=text, l=lvl))
+    return out
+
+
+def load_sub(sid):
+    return run(
+        f"""SELECT s.subnote_topic topic, IFNULL(s.description,'') description,
+                   {D.format('s.subnote_date')} date, {T.format('s.subnote_time')} time
+            FROM subnotes s JOIN notes n ON n.note_id=s.note_id
+            WHERE s.subnote_id=%s AND n.userId=%s""", (sid, USER_ID), "one")
+
+
+def split_title(t):
+    """'Topic {by: Name}' -> ('Topic', 'by: Name')"""
+    t = (t or "").strip()
+    m = re.match(r"^(.*?)\s*\{\s*(by\b[^}]*?)\s*\}\s*$", t, re.I)
+    return (m.group(1).strip(), m.group(2).strip()) if m and m.group(1).strip() else (t or "Untitled", "")
+
+
+def build_docx(row, imgs):
+    from docx import Document
+    from docx.image.image import Image as DImage
+    from docx.shared import Emu, Inches, Pt, RGBColor
+    d = Document()
+    d.styles["Normal"].font.name = "Calibri"
+    d.styles["Normal"].font.size = Pt(11)
+    title, by = split_title(row["topic"])
+    r = d.add_paragraph().add_run("✎ AdiNotes")
+    r.font.size, r.font.color.rgb = Pt(9), RGBColor(0x88, 0x88, 0x88)
+    d.add_heading(title, level=1)
+    if by:
+        r = d.add_paragraph().add_run(by)
+        r.font.size, r.font.color.rgb = Pt(11), RGBColor(0x88, 0x88, 0x88)
+    sec = d.sections[0]
+    avail = int(sec.page_width - sec.left_margin - sec.right_margin)
+    for b in parse_blocks(row["description"]):
+        if b["t"] == "img":
+            try:
+                data = imgs[b["id"]][1]
+                native = int(DImage.from_blob(data).px_width / 96 * 914400)
+                width = int(avail * b["w"] / 100) if b["w"] else min(native, avail)
+                d.add_paragraph().add_run().add_picture(io.BytesIO(data), width=Emu(width))
+            except Exception:
+                d.add_paragraph("[image could not be added]")
+        elif b["t"] == "h":
+            d.add_heading(b["text"], level=2).paragraph_format.left_indent = Inches(0.35 * b["l"])
+        else:
+            p = d.add_paragraph()
+            pf = p.paragraph_format
+            pf.space_after = Pt(2)
+            if b["t"] == "b":
+                pf.left_indent, pf.first_line_indent = Inches(0.35 * b["l"] + 0.25), Inches(-0.2)
+                p.add_run("• " + b["text"])
+            else:
+                pf.left_indent = Inches(0.35 * b["l"])
+                p.add_run(b["text"])
+    buf = io.BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
+@app.get("/api/subnotes/<int:sid>/export.<fmt>")
+def export_sub(sid, fmt):
+    if fmt != "docx":
+        return "", 404
+    row = load_sub(sid)
+    if not row:
+        return "", 404
+    try:
+        import docx  # noqa: F401
+    except ImportError:
+        return "Please run:  pip install python-docx   (then restart the app)", 501
+    imgs = {}
+    if IMG_OK:
+        for r in run("SELECT image_id, mime, data FROM note_images WHERE subnote_id=%s", (sid,)):
+            imgs[r["image_id"]] = (r["mime"], bytes(r["data"]))
+    name = (re.sub(r'[\\/:*?"<>|\r\n]+', "-", split_title(row["topic"])[0]).strip()[:80] or "note") + ".docx"
+    resp = send_file(io.BytesIO(build_docx(row, imgs)),
+                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                     as_attachment=True, download_name=name)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 # ---------- images (stored in MySQL, served with long cache) ----------

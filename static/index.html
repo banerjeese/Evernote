@@ -68,6 +68,10 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .desc .b::before{content:"•";position:absolute;left:.6em}
 .desc .h{font-size:1.3em;font-weight:700;line-height:1.4;margin:.55em 0 .1em}
 .desc.empty>div:first-child::before{content:"Start writing…";color:var(--ph);pointer-events:none}
+.desc .t{position:relative;padding-left:1.9em}
+.desc .t::before{content:"";position:absolute;left:.35em;top:.3em;width:17px;height:17px;box-sizing:border-box;border:2px solid var(--t2);border-radius:4px;font-size:13px;line-height:13px;font-weight:700;text-align:center;color:#fff;cursor:pointer}
+.desc .t[data-c="1"]{color:var(--t2);text-decoration:line-through}
+.desc .t[data-c="1"]::before{content:"✓";background:var(--green);border-color:var(--green)}
 .desc>div[data-l="1"]{margin-left:2em}.desc>div[data-l="2"]{margin-left:4em}.desc>div[data-l="3"]{margin-left:6em}.desc>div[data-l="4"]{margin-left:8em}.desc>div[data-l="5"]{margin-left:10em}
 .desc .i{position:relative;margin:.5em 0;user-select:none;-webkit-user-select:none}
 .desc .i .w{position:relative;display:block;width:fit-content;max-width:100%}
@@ -123,6 +127,17 @@ button,input,textarea{font:inherit;color:inherit;background:transparent}
 .dlmenu button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:6px;cursor:pointer;font-size:14px}
 .dlmenu button:hover{background:var(--hov)}
 #printRoot{display:none}
+.cal{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+.calbox{background:var(--bg);color:var(--t);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:14px;width:min(330px,92vw);user-select:none;-webkit-user-select:none}
+.calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:700}
+.calh button{border:0;background:none;font-size:20px;padding:4px 10px;cursor:pointer;border-radius:6px}
+.calh button:hover,.calg button:hover{background:var(--hov)}
+.calg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.calg b{font-size:11px;color:var(--t2);padding:4px 0}
+.calg button{border:0;background:none;padding:9px 0;border-radius:8px;cursor:pointer;font-size:14px}
+.calg button.td{outline:2px solid var(--green)}
+.calf{display:flex;justify-content:space-between;margin-top:10px}
+.calf button{border:1px solid var(--line);background:none;border-radius:6px;padding:6px 14px;cursor:pointer}
 #pdfStage{position:absolute;left:0;top:0;width:673px;z-index:-1;background:#fff;color:#222;--bg:#fff;--t:#222;--t2:#777;--line:#ddd}
 #pdfStage .pg{width:673px;background:#fff}
 #pdfStage .desc{padding:0;min-height:0;flex:none;width:100%}
@@ -181,6 +196,7 @@ body>:not(#printRoot){display:none!important}
     <div class="empty" id="edempty" style="margin-top:80px">Select a subnote to read or edit it.</div>
   </main>
 </div>
+<div class="cal hide" id="cal"><div class="calbox" id="calbox"></div></div>
 <div class="lb hide" id="lb"><div class="lbbar"><a class="lbb" id="lbDl" title="Save image">⬇</a><button class="lbb" id="lbDel" title="Delete image">🗑</button><button class="lbb" id="lbX" title="Close">✕</button></div><img id="lbImg" alt=""></div>
 <script>
 const $=s=>document.querySelector(s);
@@ -191,20 +207,20 @@ const fmt=(d,t)=>{if(!d)return'';const x=new Date(d+'T00:00');return x.toLocaleD
 let notes=[], subs={}, descs={}, curNote=null, curSub=null, pending=null, timer=null, filter='';
 
 /* ---------- description editor: line blocks (normal / bullet 'b' / heading 'h') ---------- */
-const ed=$('#desc'), MARK=['▸ ','⏩ ','🔴 ','🔵 ','🟢 ','🟡 '], KEEP=new Set(['b','h']);
+const ed=$('#desc'), MARK=['▸ ','⏩ ','🔴 ','🔵 ','🟢 ','🟡 '], KEEP=new Set(['b','h','t']);
 const EMO={'>':'⏩','redimp':'🔴','blueimp':'🔵','greenimp':'🟢','yellowimp':'🟡'};
 const lv=n=>{const v=+n.dataset.l;return v>=1&&v<=5?v:0};                       // indent level of a line (0-5)
 const setLv=(b,n)=>n>0?b.setAttribute('data-l',n):b.removeAttribute('data-l');
-const blk=(c,t,l)=>`<div${KEEP.has(c)?` class="${c}"`:''}${l?` data-l="${l}"`:''}>${t?esc(t):'<br>'}</div>`;
+const blk=(c,t,l,k)=>`<div${KEEP.has(c)?` class="${c}"`:''}${l?` data-l="${l}"`:''}${c==='t'&&k?' data-c="1"':''}>${t?esc(t):'<br>'}</div>`;
 function toHTML(raw){            // db value -> editor html (old plain-text notes still work)
   if(!raw)return'<div><br></div>';
   if(raw.startsWith('<!--rt-->')){
     const d=new DOMParser().parseFromString(raw,'text/html');
-    return [...d.body.children].map(x=>x.classList.contains('i')&&/^\d+$/.test(x.dataset.id||'')?imgHTML(x.dataset.id,+x.dataset.w>=10&&+x.dataset.w<=100?+x.dataset.w:0):blk(x.className,x.textContent,lv(x))).join('')||'<div><br></div>';
+    return [...d.body.children].map(x=>x.classList.contains('i')&&/^\d+$/.test(x.dataset.id||'')?imgHTML(x.dataset.id,+x.dataset.w>=10&&+x.dataset.w<=100?+x.dataset.w:0):blk(x.className,x.textContent,lv(x),x.dataset.c==='1')).join('')||'<div><br></div>';
   }
   return raw.split('\n').map(l=>blk('',l)).join('');
 }
-const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>isImg(d)?`<div class="i" data-id="${d.dataset.id}"${d.dataset.w?` data-w="${d.dataset.w}"`:''}></div>`:blk(d.className,d.textContent.replace(/\u00a0/g,' '),lv(d))).join('').replace(/<br>/g,'');
+const toRaw=()=>'<!--rt-->'+[...ed.children].map(d=>isImg(d)?`<div class="i" data-id="${d.dataset.id}"${d.dataset.w?` data-w="${d.dataset.w}"`:''}></div>`:blk(d.className,d.textContent.replace(/\u00a0/g,' '),lv(d),d.dataset.c==='1')).join('').replace(/<br>/g,'');
 const plain=()=>[...ed.children].map(d=>isImg(d)?'🖼':d.textContent).join(' ').replace(/\s+/g,' ').trim();
 const refreshEmpty=()=>ed.classList.toggle('empty',ed.children.length===1&&!ed.firstChild.className&&!ed.textContent);
 function setDesc(raw){ed.innerHTML=toHTML(raw);refreshEmpty()}
@@ -229,27 +245,36 @@ function enter(){
   if(!r.collapsed){r.deleteContents();r=sel.getRangeAt(0)}
   const b=blockOf(r.startContainer); if(!b)return;
   if(isImg(b)){const nb=document.createElement('div');nb.innerHTML='<br>';b.after(nb);place(nb,0);return}
+  const lt=b.textContent.trim().toLowerCase();                                                    // "/today" or "/date" + Enter
+  if(lt==='/date'){b.textContent='';fill(b);place(b,0);openCal(getSelection().getRangeAt(0).cloneRange());return}
+  if(lt==='/today'){b.textContent=dateStr(new Date());place(b.firstChild,b.firstChild.length);r=sel.getRangeAt(0)}
   const cls=b.className, tr=document.createRange(); tr.selectNodeContents(b); tr.setStart(r.startContainer,r.startOffset);
   const tail=tr.extractContents(), head=b.textContent, tailTxt=tail.textContent;
   const mk=MARK.find(m=>head.startsWith(m)||head===m.trim());
-  if(cls==='b'&&!head&&!tailTxt){b.className='';setLv(b,0);fill(b);place(b,0);return}                       // 2nd Enter leaves the bullet list
+  if(!cls&&!tailTxt&&head.trim().toLowerCase()==='/todo'){b.textContent='';b.className='t';fill(b);place(b,0);return}               // "/todo" + Enter -> checkbox line
+  if((cls==='b'||cls==='t')&&!head&&!tailTxt){b.className='';b.removeAttribute('data-c');setLv(b,0);fill(b);place(b,0);return}      // 2nd Enter leaves bullet / checkbox list                       // 2nd Enter leaves the bullet list
   if(mk&&head.trim()===mk.trim()&&!tailTxt){b.textContent='';setLv(b,0);fill(b);place(b,0);return}
   if(!cls&&!head&&!tailTxt&&lv(b)){setLv(b,0);fill(b);place(b,0);return}                          // 2nd Enter on an empty indented line leaves the indent          // 2nd Enter leaves ▸ / 🔴 list
-  const nb=document.createElement('div'); if(cls==='b')nb.className='b'; if(lv(b))setLv(nb,lv(b));   // next line keeps the indent
+  const nb=document.createElement('div'); if(cls==='b'||cls==='t')nb.className=cls; if(lv(b))setLv(nb,lv(b));   // next line keeps the indent
   const keep=mk&&head.length>=mk.length?mk:'';                                                   // ▸ / 🔴 lines continue
   if(keep)nb.appendChild(document.createTextNode(keep));
   nb.appendChild(tail); fill(b); fill(nb); b.after(nb);
   keep?place(nb.firstChild,keep.length):place(nb,0);
   nb.scrollIntoView({block:'nearest'});
 }
-const TRIG=/^(-|>>|>|redimp|blueimp|greenimp|yellowimp)[ \u00a0]$/i;
+const TRIG=/^(-|>>|>|\/todo|redimp|blueimp|greenimp|yellowimp)[ \u00a0]$/i, LINE={'-':'b','>>':'h','/todo':'t'};
 function shortcuts(){            // runs after typing; converts "- ", ">> ", "> ", "redimp " at the caret
   const sel=getSelection(); if(!sel.rangeCount||!sel.isCollapsed)return; const r=sel.getRangeAt(0),b=blockOf(r.startContainer); if(!b||isImg(b))return;
-  const m=headText(b,r).match(TRIG); if(!m)return; const k=m[1].toLowerCase();
-  if((k==='-'||k==='>>')&&b.className)return;
+  const head=headText(b,r), dm=head.match(/(?:^|\s)(\/today|\/date)[ \u00a0]$/i);      // works anywhere in a line
+  if(dm&&r.startContainer.nodeType===3&&r.startOffset>=dm[1].length+1){
+    const n=dm[1].length+1, x=document.createRange(); x.setStart(r.startContainer,r.startOffset-n); x.setEnd(r.startContainer,r.startOffset); x.deleteContents();
+    dm[1].toLowerCase()==='/today'?document.execCommand('insertText',false,dateStr(new Date())+' '):openCal(getSelection().getRangeAt(0).cloneRange());
+    return;
+  }
+  const m=head.match(TRIG); if(!m)return; const k=m[1].toLowerCase();
+  if(LINE[k]&&b.className)return;
   const x=document.createRange();x.setStart(b,0);x.setEnd(r.startContainer,r.startOffset);x.deleteContents();
-  if(k==='-'){b.className='b';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
-  else if(k==='>>'){b.className='h';fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
+  if(LINE[k]){b.className=LINE[k];fill(b);place(b.firstChild&&b.firstChild.nodeType===3?b.firstChild:b,0)}
   else document.execCommand('insertText',false,EMO[k]+' ');
 }
 ed.addEventListener('beforeinput',e=>{
@@ -264,7 +289,7 @@ ed.addEventListener('beforeinput',e=>{
         if(lv(b)){e.preventDefault();setLv(b,lv(b)-1);edit();return}                              // Backspace at line start outdents first
         const pv=b.previousElementSibling;
         if(pv&&isImg(pv)){e.preventDefault();markSel(pv);return}                                   // 1st Backspace selects the image above
-        if(b.className){e.preventDefault();b.className='';edit()}                                  // bullet/heading -> normal line
+        if(b.className){e.preventDefault();b.className='';b.removeAttribute('data-c');edit()}                                  // bullet/heading -> normal line
       }
     }else{
       const x=document.createRange();x.selectNodeContents(b);x.setStart(r.startContainer,r.startOffset);
@@ -273,6 +298,10 @@ ed.addEventListener('beforeinput',e=>{
   }
 });
 ed.addEventListener('input',e=>{if(!e.isComposing){fixup();shortcuts()}edit()});
+ed.addEventListener('click',e=>{                       // tap the checkbox area of a todo line to tick / untick it
+  const t=e.target; if(!t.classList||!t.classList.contains('t'))return;
+  if(e.clientX-t.getBoundingClientRect().left<1.8*parseFloat(getComputedStyle(t).fontSize)){t.dataset.c==='1'?t.removeAttribute('data-c'):t.setAttribute('data-c','1');edit()}
+});
 function indent(d){                                    // indent / outdent the current line (or every selected line)
   fixup(); const sel=getSelection();
   if(!(sel.rangeCount&&ed.contains(sel.anchorNode))&&saved){sel.removeAllRanges();sel.addRange(saved.cloneRange())}
@@ -393,6 +422,32 @@ $('#indBtn').onmousedown=$('#outBtn').onmousedown=e=>e.preventDefault(); $('#ind
 /* ---------- real PDF download: pages are laid out here, drawn with html2canvas, assembled with jsPDF ---------- */
 const LIBS=['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'], _lj={};
 const loadJs=u=>_lj[u]||(_lj[u]=new Promise((ok,no)=>{const x=document.createElement('script');x.src=u;x.onload=ok;x.onerror=()=>{delete _lj[u];no(new Error('load '+u))};document.head.appendChild(x)}));
+/* ---------- /today and /date ---------- */
+const MON=['jan','feb','mar','apr','may','jun','jul','aug','sept','oct','nov','dec'], MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const dateStr=d=>`${MON[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}`;       // oct 5 2026
+let calAt=null,calY=0,calM=0;
+function openCal(at){calAt=at;const n=new Date();calY=n.getFullYear();calM=n.getMonth();drawCal();$('#cal').classList.remove('hide')}
+function closeCal(){$('#cal').classList.add('hide');calAt=null}
+function drawCal(){
+  const n=new Date(),days=new Date(calY,calM+1,0).getDate(),pad=new Date(calY,calM,1).getDay();
+  let g='<b>Su</b><b>Mo</b><b>Tu</b><b>We</b><b>Th</b><b>Fr</b><b>Sa</b>'+'<span></span>'.repeat(pad);
+  for(let d=1;d<=days;d++){const t=d===n.getDate()&&calM===n.getMonth()&&calY===n.getFullYear();g+=`<button data-d="${d}"${t?' class="td"':''}>${d}</button>`}
+  $('#calbox').innerHTML=`<div class="calh"><button data-a="py" title="Previous year">«</button><button data-a="pm" title="Previous month">‹</button><span>${MONTHS[calM]} ${calY}</span><button data-a="nm" title="Next month">›</button><button data-a="ny" title="Next year">»</button></div><div class="calg">${g}</div><div class="calf"><button data-a="today">Today</button><button data-a="x">Cancel</button></div>`;
+}
+function pickDate(d){
+  const at=calAt; closeCal(); ed.focus({preventScroll:true}); const sel=getSelection();
+  if(at&&ed.contains(at.startContainer)){sel.removeAllRanges();sel.addRange(at)}else toEnd();
+  document.execCommand('insertText',false,dateStr(d)+' '); edit();
+}
+$('#calbox').onclick=e=>{
+  const b=e.target.closest('button'); if(!b)return; const a=b.dataset.a;
+  if(a==='py'){calY--;drawCal()}else if(a==='ny'){calY++;drawCal()}
+  else if(a==='pm'){if(--calM<0){calM=11;calY--}drawCal()}
+  else if(a==='nm'){if(++calM>11){calM=0;calY++}drawCal()}
+  else if(a==='x')closeCal(); else if(a==='today')pickDate(new Date()); else if(b.dataset.d)pickDate(new Date(calY,calM,+b.dataset.d));
+};
+$('#cal').onclick=e=>{if(e.target.id==='cal')closeCal()};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#cal').classList.contains('hide'))closeCal()});
 const splitTitle=t=>{t=(t||'').trim();const m=t.match(/^(.*?)\s*\{\s*(by\b[^}]*?)\s*\}\s*$/i);return m&&m[1].trim()?{title:m[1].trim(),by:m[2].trim()}:{title:t||'Untitled',by:''}};   // "Topic {by: Name}"
 function mkHead(){const {title,by}=splitTitle($('#title').value),h=document.createElement('div');h.className='pr-head';
   const add=(c,t)=>{const d=document.createElement('div');d.className=c;d.textContent=t;h.append(d)};

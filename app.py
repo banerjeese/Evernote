@@ -192,7 +192,7 @@ def parse_blocks(raw):
                 out.append(dict(t="img", id=int(idm.group(1)), w=int(wm.group(1)) if wm else 0, l=0))
             continue
         text = html.unescape(re.sub(r"<[^>]+>", "", inner)).replace("\u00a0", " ")
-        out.append(dict(t={"b": "b", "h": "h"}.get(cls, "p"), text=text, l=lvl))
+        out.append(dict(t={"b": "b", "h": "h", "t": "t"}.get(cls, "p"), text=text, l=lvl, c='data-c="1"' in attrs))
     return out
 
 
@@ -242,7 +242,13 @@ def build_docx(row, imgs):
             p = d.add_paragraph()
             pf = p.paragraph_format
             pf.space_after = Pt(2)
-            if b["t"] == "b":
+            if b["t"] == "t":                      # checkbox line
+                pf.left_indent, pf.first_line_indent = Inches(0.35 * b["l"] + 0.3), Inches(-0.3)
+                p.add_run("☑ " if b.get("c") else "☐ ")
+                tr = p.add_run(b["text"])
+                if b.get("c"):
+                    tr.font.strike, tr.font.color.rgb = True, RGBColor(0x88, 0x88, 0x88)
+            elif b["t"] == "b":
                 pf.left_indent, pf.first_line_indent = Inches(0.35 * b["l"] + 0.25), Inches(-0.2)
                 p.add_run("• " + b["text"])
             else:

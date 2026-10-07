@@ -80,6 +80,16 @@ def list_notes():
                    (SELECT COUNT(*) FROM subnotes s WHERE s.note_id = n.note_id) cnt
             FROM notes n WHERE n.userId=%s ORDER BY n.note_id DESC""", (USER_ID,)))
 
+@app.get("/api/pages")
+def list_pages():
+    return jsonify(run(
+        """SELECT n.note_id, n.note_topic,
+                  s.subnote_id, s.subnote_topic
+           FROM notes n
+           LEFT JOIN subnotes s ON s.note_id = n.note_id
+           WHERE n.userId = %s
+           ORDER BY n.note_id DESC, s.subnote_id DESC""",
+        (USER_ID,)))
 
 @app.post("/api/notes")
 def add_note():
